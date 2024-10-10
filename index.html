@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Task Wiz System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.js"></script>
+    <style>
+        body {
+            background-image: url(https://t3.ftcdn.net/jpg/02/29/07/42/360_F_229074283_5HpNAac8t1a9q2hGcDkP94k0z2Nvcp0X.jpg);
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        div {
+            background: transparent;
+        }
+        input, select, textarea {
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            width: 100%;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4f46e5;
+            transition: width 0.3s ease;
+        }
+        #login {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, .2);
+            backdrop-filter: blur(25px);
+        }
+        .task-completed {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        .calendar-day {
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+        .calendar-day:hover {
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        .task-card {
+            transition: transform 0.3s;
+        }
+        .task-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .admin-section {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .progress-bar {
+             width: 100%;
+            height: 20px;
+            background-color: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 4px; /* Add some margin for spacing */
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #4f46e5; /* Color for progress */
+            transition: width 0.3s ease;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="min-h-screen">
+        <!-- Login Page -->
+        <div v-if="!isLoggedIn" class="min-h-screen flex items-center justify-center" id="log">
+            <div class="p-8 rounded-lg shadow-md w-96" id="login">
+                <h1 style="color: white;" class="text-2xl font-bold mb-6 text-center">Task Wiz Login</h1>
+                <form @submit.prevent="login" class="space-y-4">
+                    <div>
+                        <label style="color: white;" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <input 
+                            v-model="loginForm.username" 
+                            type="text" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                            required
+                        >
+                    </div>
+                    <div>
+                        <label style="color: white;" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input 
+                            v-model="loginForm.password" 
+                            type="password" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                            required
+                        >
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Login</button>
+                </form>
+                <div id="credentials" class="mt-4 text-sm text-gray-600">
+                    <p style="color: gray;">Available accounts for testing:</p>
+                    <ul style="color: gray;" class="list-disc list-inside mt-2">
+                        <li>Admin: username: "admin", password: "admin123"</li>
+                        <li>Team Members:</li>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>username: "Akshat", password: "akshat123"</li>
+                            <li>username: "Aditya", password: "aditya123"</li>
+                        </ul>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div v-else>
+            <nav class="bg-indigo-600 text-white p-4">
+                <div class="container mx-auto flex justify-between items-center">
+                    <h1 class="text-xl font-bold">Task Wiz System</h1>
+                    <div class="flex items-center space-x-4">
+                        <span>Welcome, {{ currentUser.username }}</span>
+                        <button @click="logout" class="bg-indigo-500 px-4 py-2 rounded hover:bg-indigo-700">Logout</button>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="container mx-auto p-4">
+                <!-- Admin Dashboard -->
+                <div v-if="currentUser.isAdmin" class="mb-8">
+                    <h2 class="text-3xl font-bold mb-6 text-center text-white">Admin Dashboard</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Manage Team Section -->
+                        <div class="admin-section p-6">
+                            <h3 class="text-2xl font-semibold mb-4">Manage Team</h3>
+                            <div class="space-y-4">
+                                <div v-for="user in users.filter(u => !u.isAdmin)" :key="user.username" class="bg-white p-4 rounded-lg shadow">
+                                    <h4 class="text-lg font-bold mb-2">{{ user.username }}</h4>
+                                    <p class="text-gray-600 mb-2">Role: Team Member</p>
+                                    <p class="text-gray-600 mb-2">Tasks Assigned: {{ getUserTasks(user.username).length }}</p>
+                                    <p class="text-gray-600">Completed Tasks: {{ getUserTasks(user.username).filter(t => t.completed).length }}</p>
+                                    
+                                    <!-- Progress Bar -->
+                                    <div class="progress-bar mt-4">
+                                        <div class="progress-bar-fill" :style="{ width: calculateUserProgress(user.username) + '%' }"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>     
+                        <!-- Create New Task Section -->
+                        <div class="admin-section p-6">
+                            <h3 class="text-2xl font-semibold mb-4">Create New Task</h3>
+                            <form @submit.prevent="createTask" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <input v-model="newTask.title" type="text" required class="rounded-md">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea v-model="newTask.description" required class="rounded-md"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                                    <input v-model="newTask.dueDate" type="date" required class="rounded-md">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+                                    <select v-model="newTask.assignedTo" required class="rounded-md">
+                                        <option value="">Select user</option>
+                                        <option v-for="user in users.filter(u => !u.isAdmin)" :value="user.username">
+                                            {{ user.username }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">Create Task</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Manage Tasks Section -->
+                    <div class="admin-section p-6 mt-6">
+                        <h3 class="text-2xl font-semibold mb-4">Manage Tasks</h3>
+                        <div v-for="user in users.filter(u => !u.isAdmin)" :key="user.username" class="mb-6">
+                            <h4 class="text-xl font-bold mb-2">{{ user.username }}'s Tasks</h4>
+                            <div v-if="getUserTasks(user.username).length === 0" class="text-gray-500">
+                                No tasks assigned yet.
+                            </div>
+                            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div v-for="task in getUserTasks(user.username)" :key="task.title" class="task-card bg-white border p-4 rounded-lg hover:shadow-lg transition-all duration-200" :class="{ 'task-completed': task.completed }">
+                                    <h4 class="font-bold">{{ task.title }}</h4>
+                                    <p class="text-gray-600">{{ task.description }}</p>
+                                    <div class="mt-2 text-sm text-gray-500">Due: {{ formatDate(task.dueDate) }}</div>
+                                    <div class="mt-4">
+                                        <button @click="toggleTaskCompletion(task)" 
+                                                :class="['px-4 py-2 rounded text-white transition duration-300', task.completed ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600']">
+                                            {{ task.completed ? 'Mark as Incomplete' : 'Mark as Complete' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendar View -->
+                <div class="admin-section p-6 mt-6">
+                    <h2 class="text-2xl font-bold mb-4">Calendar View</h2>
+                    <div class="grid grid-cols-7 gap-2 mb-4">
+                        <div v-for="day in days" :key="day" class="text-center font-bold text-lg">{{ day }}</div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-2">
+                        <div v-for="date in calendarDates" :key="date" class="calendar-day text-center p-2 rounded border" @click="showTasksForDate(date)">
+                            <div>{{ date.getDate() }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Tasks for Selected Date -->
+                <div class="admin-section p-6 mt-6">
+                    <h2 class="text-2xl font-bold mb-4">Tasks for Selected Date</h2>
+                    <div v-if="tasksForDate.length === 0" class="text-gray-500">
+                        No tasks for this date.
+                    </div>
+                    <div v-else>
+                        <div v-for="task in tasksForDate" :key="task.title" class="task-card bg-white border p-4 rounded-lg hover:shadow-lg transition-all duration-200" :class="{ 'task-completed': task.completed }">
+                            <h4 class="font-bold">{{ task.title }}</h4>
+                            <p class="text-gray-600">{{ task.description }}</p>
+                            <div class="mt-2 text-sm text-gray-500">Due: {{ formatDate(task.dueDate) }}</div>
+                            <div class="mt-4">
+                                <button @click="toggleTaskCompletion(task)" 
+                                        :class="['px-4 py-2 rounded text-white transition duration-300', task.completed ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600']">
+                                    {{ task.completed ? 'Mark as Incomplete' : 'Mark as Complete' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    isLoggedIn: false,
+                    loginForm: {
+                        username: '',
+                        password: ''
+                    },
+                    users: [
+                        { username: 'admin', password: 'admin123', isAdmin: true },
+                        { username: 'Akshat', password: 'akshat123', isAdmin: false },
+                        { username: 'Aditya', password: 'aditya123', isAdmin: false },
+                    ],
+                    currentUser: {},
+                    tasks: [],
+                    newTask: {
+                        title: '',
+                        description: '',
+                        dueDate: '',
+                        assignedTo: '',
+                        progress: 0,
+                        completed: false
+                    },
+                    days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                    calendarDates: [],
+                    tasksForDate: [] // Store tasks for the selected date
+                };
+            },
+            methods: {
+                login() {
+                    const user = this.users.find(u => u.username === this.loginForm.username && u.password === this.loginForm.password);
+                    if (user) {
+                        this.isLoggedIn = true;
+                        this.currentUser = user;
+                    } else {
+                        alert('Invalid username or password');
+                    }
+                },
+                logout() {
+                    this.isLoggedIn = false;
+                    this.currentUser = {};
+                    this.loginForm.username = '';
+                    this.loginForm.password = '';
+                },
+                createTask() {
+                    this.tasks.push({ ...this.newTask, progress: 0, completed: false });
+                    this.newTask = { title: '', description: '', dueDate: '', assignedTo: '', progress: 0, completed: false };
+                },
+                toggleTaskCompletion(task) {
+                    task.completed = !task.completed;
+                },
+                getUserTasks(username) {
+                    return this.tasks.filter(task => task.assignedTo === username);
+                },
+                formatDate(dateString) {
+                    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString(undefined, options);
+                },
+                showTasksForDate(date) {
+                    const selectedDate = date.toISOString().split('T')[0]; // Convert to YYYY-MM-DD format
+                    this.tasksForDate = this.tasks.filter(task => task.dueDate === selectedDate);
+                },
+                generateCalendarDates() {
+                    const dates = [];
+                    const today = new Date();
+                    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    for (let i = firstDay.getDate(); i <= lastDay.getDate(); i++) {
+                        dates.push(new Date(today.getFullYear(), today.getMonth(), i));
+                    }
+                    return dates;
+                },
+                calculateUserProgress(username) {
+                const userTasks = this.getUserTasks(username);
+                if (userTasks.length === 0) return 0; // No tasks assigned
+                const completedTasks = userTasks.filter(task => task.completed).length;
+                return (completedTasks / userTasks.length) * 100; // Progress percentage
+                }
+            },
+            mounted() {
+                this.calendarDates = this.generateCalendarDates();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
